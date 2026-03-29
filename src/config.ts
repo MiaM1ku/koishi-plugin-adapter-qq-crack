@@ -37,9 +37,9 @@ export type Config = BaseConfig & (HttpServer.Options | WsClient.Options);
 
 export const Config: Schema<Config> = Schema.intersect([
   Schema.object({
-    id: Schema.string().description('机器人账号 ID。').required(),
-    secret: Schema.string().description('机器人密钥。').role('secret'),
-    type: Schema.union(['public', 'private'] as const).description('机器人类型。').default('public'),
+    id: Schema.string().description('机器人ID（AppID）。').required(),
+    secret: Schema.string().description('机器人密钥（secret）。').role('secret'),
+    type: Schema.union(['public', 'private'] as const).description('机器人类型。').default('private'),
     intents: Schema.bitset(QQ.Intents).description('需要订阅的机器人事件。').default(defaultIntents),
     retryWhen: Schema.array(Number).description('发送消息遇到平台错误码时重试。').default([]),
     protocol: Schema.union(['websocket', 'webhook']).description('选择要使用的协议。').default('websocket'),
