@@ -10,6 +10,7 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, Q
   _s: number = null;
   _disposeHeartbeat?: () => void;
   _acked = true;
+  _zombieRestarting = false;
 
   async prepare()
   {
@@ -36,13 +37,27 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, Q
     if (!this._acked)
     {
       this.bot.logger.warn('zombied connection');
-      return this.socket.close();
+      return this.restartZombiedConnection();
     }
     this.socket.send(JSON.stringify({
       op: Opcode.HEARTBEAT,
       s: this._s,
     }));
     this._acked = false;
+  }
+
+  restartZombiedConnection()
+  {
+    if (this._zombieRestarting) return;
+    this._zombieRestarting = true;
+    this._disposeHeartbeat?.();
+    this._disposeHeartbeat = null;
+    const socket = this.socket;
+    this.bot.ctx.setTimeout(() =>
+    {
+      void this.start();
+    }, 0);
+    socket?.close();
   }
 
   async accept()
@@ -101,6 +116,7 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, Q
         this._s = parsed.s;
         if (parsed.t === 'READY')
         {
+          this._zombieRestarting = false;
           this._sessionId = parsed.d.session_id;
           this.bot.user = decodeUser(parsed.d.user);
           this.bot.guildBot.user = this.bot.user;
@@ -115,6 +131,7 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, Q
         }
         if (parsed.t === 'RESUMED')
         {
+          this._zombieRestarting = false;
           return this.bot.online();
         }
         const session = await adaptSession(this.bot, parsed);
@@ -125,6 +142,7 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, Q
     this.socket.addEventListener('close', (e) =>
     {
       logDebug(this.bot, 'websocket closed, code %o, reason: %s', e.code, e.reason);
+      if (this._zombieRestarting) return;
       if (e.code > 4000 && ![4008, 4009].includes(e.code))
       {
         this._sessionId = '';
