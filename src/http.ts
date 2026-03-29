@@ -36,7 +36,7 @@ export class HttpServer<C extends Context = Context> extends Adapter<C, QQBot<C>
         };
       } else if (payload.op === Opcode.DISPATCH)
       {
-        // https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/interface-framework/sign.html
+        // 校验回调签名。
         const key = this.getPrivateKey(bot.config.secret);
         const body = ctx.request.body[Symbol.for('unparsedBody')];
         if (!(await this.verify(key, ctx.request.header, body)))
@@ -108,12 +108,10 @@ export namespace HttpServer
 {
   export interface Options
   {
-    protocol: 'webhook';
     path: string;
   }
 
   export const Options: Schema<Options> = Schema.object({
-    protocol: Schema.const('webhook').required(),
     path: Schema.string().role('url').description('服务器监听的路径。').default('/qq'),
   });
 }

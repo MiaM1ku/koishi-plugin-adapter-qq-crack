@@ -140,13 +140,7 @@ export namespace WsClient
 {
   export interface Options extends Adapter.WsClientConfig
   {
-    protocol?: 'websocket';
   }
 
-  export const Options: Schema<Options> = Schema.intersect([
-    Schema.object({
-      protocol: Schema.const('websocket').required(false),
-    }),
-    Adapter.WsClientConfig,
-  ]);
+  export const Options: Schema<Options> = Adapter.WsClientConfig;
 }

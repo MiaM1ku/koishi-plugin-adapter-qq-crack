@@ -47,17 +47,29 @@ export const Config: Schema<Config> = Schema.intersect([
     protocol: Schema.union(['websocket', 'webhook']).description('选择要使用的协议。').default('websocket'),
   }),
   Schema.union([
-    WsClient.Options,
-    HttpServer.Options,
+    Schema.intersect([
+      Schema.object({
+        protocol: Schema.const('websocket').required(false),
+      }),
+      WsClient.Options,
+      Schema.object({}),
+    ]),
+    Schema.intersect([
+      Schema.object({
+        protocol: Schema.const('webhook').required(false),
+      }),
+      HttpServer.Options,
+      Schema.object({}),
+    ]),
   ]),
   Schema.object({
     sandbox: Schema.boolean().description('是否开启沙箱模式。').default(false),
     endpoint: Schema.string().role('link').description('要连接的服务器地址。').default('https://api.sgroup.qq.com/'),
     manualAcknowledge: Schema.boolean().description('手动响应回调消息。').default(false),
     gatewayUrl: Schema.string().role('link').description('覆盖 WebSocket 地址。'),
-    autoStreamText: Schema.boolean().description('纯文本消息默认使用原生 Markdown 流式发送。').default(false),
-  }).description('高级设置'),
+  }).description('进阶设置'),
   Schema.object({
+    autoStreamText: Schema.boolean().description('使用原生 Markdown 流式发送纯文本消息').default(false),
     loggerinfo: Schema.boolean().default(false).description('调试模式').experimental(),
-  }).description('调试设置'),
+  }).description('高级设置'),
 ] as const);
