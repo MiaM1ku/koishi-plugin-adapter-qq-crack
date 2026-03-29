@@ -6,6 +6,7 @@ import { GroupInternal } from '../internal';
 import { HttpServer } from '../http';
 import { decodeUser } from '../utils';
 import * as AdapterConfig from '../config';
+import { fromPrivateChannelId, isPrivateChannelId, toPrivateChannelId } from '../channel';
 
 interface GetAppAccessTokenResult
 {
@@ -147,18 +148,22 @@ export class QQBot<C extends Context = Context, T extends QQBot.Config = QQBot.C
 
   async createDirectChannel(id: string)
   {
-    return { id, type: Universal.Channel.Type.DIRECT };
+    return { id: toPrivateChannelId(id), type: Universal.Channel.Type.DIRECT };
   }
 
   async deleteMessage(channelId: string, messageId: string): Promise<void>
   {
-    // @TODO: need `private:`
+    if (isPrivateChannelId(channelId))
+    {
+      await this.internal.deletePrivateMessage(fromPrivateChannelId(channelId), messageId);
+      return;
+    }
     try
     {
       await this.internal.deleteMessage(channelId, messageId);
     } catch (e)
     {
-      await this.internal.deletePrivateMessage(channelId, messageId);
+      await this.internal.deletePrivateMessage(fromPrivateChannelId(channelId), messageId);
     }
   }
 }

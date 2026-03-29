@@ -2,6 +2,7 @@ import { Bot, Context, h, Session, Universal } from 'koishi';
 import * as QQ from './types';
 import { QQBot } from './bot';
 import { patchSessionUserName } from './user';
+import { toPrivateChannelId } from './channel';
 
 export const decodeGuild = (guild: QQ.Guild): Universal.Guild => ({
   id: guild.id,
@@ -211,7 +212,7 @@ export async function adaptSession<C extends Context = Context>(bot: QQBot<C>, i
     session.type = 'message';
     session.isDirect = true;
     decodeGroupMessage(bot, input.d, session.event.message = {}, session.event);
-    session.channelId = session.userId;
+    session.channelId = toPrivateChannelId(session.userId);
   } else if (input.t === 'FRIEND_ADD')
   {
     session.type = 'friend-added';
@@ -250,7 +251,7 @@ export async function adaptSession<C extends Context = Context>(bot: QQBot<C>, i
     } else if (input.d.chat_type === QQ.ChatType.DIRECT)
     {
       session.isDirect = true;
-      session.channelId = session.userId;
+      session.channelId = toPrivateChannelId(session.userId);
     }
     session.event.button = {
       id: input.d.data.resolved.button_id,

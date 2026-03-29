@@ -41,7 +41,7 @@ export const Config: Schema<Config> = Schema.intersect([
     secret: Schema.string().description('机器人密钥。').role('secret'),
     token: Schema.string().description('机器人令牌。').role('secret'),
     type: Schema.union(['public', 'private'] as const).description('机器人类型。').default('public'),
-    authType: Schema.union(['bot', 'bearer'] as const).description('采用的鉴权方式，bot 会自动兼容到 AccessToken。').default('bearer'),
+    authType: Schema.union(['bot', 'bearer'] as const).description('采用的鉴权方式。').default('bearer'),
     intents: Schema.bitset(QQ.Intents).description('需要订阅的机器人事件。').default(defaultIntents),
     retryWhen: Schema.array(Number).description('发送消息遇到平台错误码时重试。').default([]),
     protocol: Schema.union(['websocket', 'webhook']).description('选择要使用的协议。').default('websocket'),

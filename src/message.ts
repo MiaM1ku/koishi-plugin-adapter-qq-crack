@@ -5,6 +5,7 @@ import { QQGuildBot } from './bot/guild';
 import { logDebug } from './logger';
 import { parseQQMarkdownElement, QQMarkdownRequest } from './markdown';
 import { applyAutoStream, clearAutoStream, createAutoStreamFinalRequest, getAutoStreamFinalDelay, scheduleAutoStreamFinal, updateAutoStream } from './stream';
+import { fromPrivateChannelId } from './channel';
 
 export const escapeMarkdown = (val: string) =>
   val
@@ -351,7 +352,7 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
     const sendRequest = (payload: QQ.Message.Request) =>
     {
       return this.session.isDirect
-        ? this.bot.internal.sendPrivateMessage(this.session.channelId, payload)
+        ? this.bot.internal.sendPrivateMessage(fromPrivateChannelId(this.session.channelId), payload)
         : this.bot.internal.sendMessage(this.session.channelId, payload);
     };
     const send = async () =>
