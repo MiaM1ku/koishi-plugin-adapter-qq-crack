@@ -11,8 +11,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/koishi-shangxue-plugins/koishi-plugin-adapter-qq-crack.git",
-    "directory": "adapters/qq"
+    "url": "git+https://github.com/koishi-shangxue-plugins/koishi-plugin-adapter-qq-crack.git"
   },
   "bugs": {
     "url": "https://github.com/koishi-shangxue-plugins/koishi-plugin-adapter-qq-crack/issues"
