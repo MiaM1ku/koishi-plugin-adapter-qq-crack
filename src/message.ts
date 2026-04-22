@@ -504,52 +504,50 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
 
   decodeButton(attrs: Dict, label: string)
   {
-    const type = attrs.type;
-    const href = typeof attrs.href === 'string' ? attrs.href : undefined;
+    const attrAction = (attrs.action && typeof attrs.action === 'object') ? attrs.action : {};
+    const attrRenderData = (attrs.render_data && typeof attrs.render_data === 'object') ? attrs.render_data : {};
+    const attrPermission = (attrs.permission && typeof attrs.permission === 'object')
+      ? attrs.permission
+      : (attrAction.permission && typeof attrAction.permission === 'object' ? attrAction.permission : undefined);
+
+    const type = attrs.type ?? attrAction.type;
     const text = typeof attrs.text === 'string' ? attrs.text : undefined;
 
-    // 确定发送的数据 (action.data)
-    const actionData = typeof attrs.data === 'string'
-      ? attrs.data
-      : type === 'link'
-        ? (href || '')
-        : text || label || (typeof attrs.id === 'string' ? attrs.id : '');
+    let actionData = attrs.data ?? attrAction.data;
+    if (actionData === undefined || actionData === null || actionData === '')
+    {
+      if (type === 'link' || type === 0)
+      {
+        actionData = attrs.href ?? attrAction.data ?? '';
+      } else
+      {
+        actionData = text || label || (typeof attrs.id === 'string' ? attrs.id : '');
+      }
+    }
 
-    // 确定显示的文字 (render_data.label)
-    // 优先级：子元素(label) > text属性 > actionData
-    const displayLabel = label || text || actionData;
+    const displayLabel = attrRenderData.label || label || text || actionData;
 
     const result: QQ.Button = {
       ...(typeof attrs.id === 'string' ? { id: attrs.id } : {}),
       render_data: {
-        label: displayLabel,
-        visited_label: displayLabel,
-        style: typeof attrs.style === 'number'
-          ? attrs.style
-          : (typeof attrs.class === 'string' && attrs.class === 'primary' ? 1 : 1), // 默认 style = 1
+        label: String(displayLabel || ''),
+        visited_label: String(displayLabel || ''),
+        style: attrRenderData.style ?? (typeof attrs.style === 'number' ? attrs.style : 1),
       },
       action: {
-        type: typeof type === 'number' ? type : (type === 'link' ? 0 : 2), // 默认 type = 2
-        permission: {
-          type: 2,
-        },
-        data: actionData,
-        ...(type !== 'link' ? { enter: true } : {}),
+        type: typeof type === 'number' ? type : (type === 'link' ? 0 : 2),
+        permission: attrPermission || { type: 2 },
+        data: String(actionData || ''),
+        ...(type !== 'link' && type !== 0 ? { enter: true } : {}),
       },
     };
 
-    if (attrs.action && typeof attrs.action === 'object')
-    {
-      Object.assign(result.action, attrs.action);
-    }
-    if (attrs.render_data && typeof attrs.render_data === 'object')
-    {
-      Object.assign(result.render_data, attrs.render_data);
-    }
-    if (attrs.permission && typeof attrs.permission === 'object')
-    {
-      result.action.permission = attrs.permission;
-    }
+    Object.assign(result.action, attrAction);
+    Object.assign(result.render_data, attrRenderData);
+
+    if (!result.render_data.label) result.render_data.label = String(result.action.data || '');
+    if (!result.render_data.visited_label) result.render_data.visited_label = result.render_data.label;
+    if (result.render_data.style === undefined) result.render_data.style = 1;
 
     return result;
   }
