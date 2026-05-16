@@ -171,6 +171,7 @@ export interface GatewayEvents
   AUDIO_OR_LIVE_CHANNEL_MEMBER_EXIT: Partial<Channel>;
   C2C_MESSAGE_CREATE: UserMessage;
   GROUP_AT_MESSAGE_CREATE: UserMessage;
+  GROUP_MESSAGE_CREATE: UserMessage;
   INTERACTION_CREATE: Interaction;
   GROUP_ADD_ROBOT: GroupEvent;
   GROUP_DEL_ROBOT: GroupEvent;
@@ -1339,16 +1340,20 @@ export namespace Forum
   }
 }
 
+export interface GroupMember
+{
+  id: string;
+  username?: string;
+  bot?: boolean;
+  member_openid?: string;
+  union_openid?: string;
+}
+
 export interface UserMessage
 {
   id: string;
-  author: {
-    id: string;
-    username?: string;
-    bot?: boolean;
-    member_openid?: string;
-    union_openid?: string;
-  };
+  author: GroupMember;
+  mention?: GroupMember[];
   content: string;
   timestamp: string;
   group_id: string;

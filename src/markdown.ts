@@ -32,7 +32,14 @@ export function extractMarkdownText(children: readonly h[])
   {
     if (child.type === 'text')
     {
-      content += typeof child.attrs.content === 'string' ? child.attrs.content : '';
+      if (typeof child.attrs.content !== 'string')
+        continue;
+      let text = child.attrs.content
+      while (text.startsWith('<markdown>'))
+        text = text.slice(10);
+      while (text.endsWith('</markdown>'))
+        text = text.slice(0, -11);
+      content += text;
     } else if (child.type === 'br')
     {
       content += '\n';

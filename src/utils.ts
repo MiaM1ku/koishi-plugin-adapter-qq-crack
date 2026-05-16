@@ -48,6 +48,10 @@ export function decodeGroupMessage(
   registerMessageReference(data.id, data.message_scene?.ext?.map(extractReferenceFromExt).find(Boolean));
   message.elements = [];
   if (data.content.length) message.elements.push(h.text(data.content));
+  if (data.mention?.length)
+  {
+    message.elements.push(...data.mention.map(mention => h.at(mention.id)));
+  }
   for (const attachment of (data.attachments ?? []))
   {
     if (attachment.content_type === 'file')
@@ -144,7 +148,7 @@ export async function adaptSession<C extends Context = Context>(bot: QQBot<C>, i
 {
   let session = bot.session();
 
-  if (!['GROUP_AT_MESSAGE_CREATE', 'C2C_MESSAGE_CREATE', 'FRIEND_ADD', 'FRIEND_DEL',
+  if (!['GROUP_AT_MESSAGE_CREATE', 'GROUP_MESSAGE_CREATE', 'C2C_MESSAGE_CREATE', 'FRIEND_ADD', 'FRIEND_DEL',
     'GROUP_ADD_ROBOT', 'GROUP_DEL_ROBOT', 'INTERACTION_CREATE'].includes(input.t))
   {
     session = bot.guildBot.session();
@@ -210,6 +214,12 @@ export async function adaptSession<C extends Context = Context>(bot: QQBot<C>, i
     decodeGroupMessage(bot, input.d, session.event.message = {}, session.event);
     session.channelId = session.guildId;
     session.elements.unshift(h.at(session.selfId));
+  } else if (input.t === 'GROUP_MESSAGE_CREATE')
+  {
+    session.type = 'message';
+    session.isDirect = false;
+    decodeGroupMessage(bot, input.d, session.event.message = {}, session.event);
+    session.channelId = session.guildId;
   } else if (input.t === 'C2C_MESSAGE_CREATE')
   {
     session.type = 'message';
