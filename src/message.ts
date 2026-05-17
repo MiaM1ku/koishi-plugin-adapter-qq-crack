@@ -626,6 +626,10 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
     } else if (type === 'text')
     {
       this.content += this.useMarkdown ? escapeMarkdown(attrs.content) : attrs.content;
+    } else if (type === 'at')
+    {
+      const content = attrs.type === 'all' ? '@everyone' : `<@${attrs.id}>`;
+      this.content += this.useMarkdown ? escapeMarkdown(content) : content;
     } else if (type === 'quote')
     {
       // 先记录引用目标，真正发送时再统一转换成平台接受的引用 ID。
