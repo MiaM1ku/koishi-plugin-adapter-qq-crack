@@ -28,6 +28,7 @@ export interface BaseConfig extends QQ.Options
   manualAcknowledge: boolean;
   loggerinfo: boolean;
   autoStreamText: boolean;
+  disableUserNamePersist: boolean;
   protocol: 'websocket' | 'webhook';
   path?: string;
   gatewayUrl?: string;
@@ -69,5 +70,6 @@ export const Config: Schema<Config> = Schema.intersect([
   Schema.object({
     autoStreamText: Schema.boolean().description('使用原生 Markdown 流式发送纯文本消息。').default(false),
     loggerinfo: Schema.boolean().default(false).description('调试模式').experimental(),
+    disableUserNamePersist: Schema.boolean().default(false).description('禁用将消息中的用户名写入数据库（调试用）。').experimental(),
   }).description('高级设置'),
 ] as const);

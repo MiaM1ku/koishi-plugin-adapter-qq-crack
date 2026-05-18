@@ -1,5 +1,6 @@
 import { Session } from 'koishi';
 import { QQBot } from './bot';
+import { BaseConfig } from './config';
 
 const USERNAME_CACHE_TTL = 10 * 60 * 1000;
 const USERNAME_WRITE_DELAY = 1000;
@@ -130,7 +131,11 @@ export async function patchSessionUserName(bot: QQBot, session: Session)
   if (directName)
   {
     ensureSessionUser(session).name = directName;
-    scheduleUserNameWrite(bot, session.userId, directName);
+    const cfg = bot.config as BaseConfig;
+    if (!cfg.disableUserNamePersist)
+    {
+      scheduleUserNameWrite(bot, session.userId, directName);
+    }
     return;
   }
 
