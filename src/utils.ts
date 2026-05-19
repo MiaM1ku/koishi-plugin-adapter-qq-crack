@@ -112,18 +112,13 @@ export async function decodeMessage(
 ): Promise<Universal.Message>
 {
   message.id = message.messageId = data.id;
-  message.content = (data.content ?? '')
-    .replace(/<@!(\d+)>/g, (_, $1) => h.at($1).toString());
-  // .replace(/<#(.+)>/, (_, $1) => h.sharp($1).toString()) // not used?
+  message.elements = [h.text(message.content)];
   const { attachments = [] } = data;
   if (attachments.length && !/\s$/.test(message.content)) message.content += ' ';
-  message.content = attachments
+  message.elements.push(...attachments
     .filter(({ content_type }) => content_type.startsWith('image'))
-    .reduce((content, attachment) => content + h.image('https://' + attachment.url), message.content);
-  message.elements = h.parse(message.content);
-  message.elements = h.transform(message.elements, {
-    text: (attrs) => h.unescape(attrs.content),
-  });
+    .map((attachment) => h.image('https://' + attachment.url)));
+  message.content = message.elements.join('');
 
   if (data.message_reference)
   {
