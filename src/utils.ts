@@ -49,16 +49,18 @@ export function decodeGroupMessage(
   message.elements = [];
   if (data.content.length)
   {
-    const content = data.content;
-    const escaped = h.escape(content);
-    const replaced = escaped
-      .replace(/&lt;@([0-9A-Z]{32})&gt;/g, (_, id) => h.at(id).toString());
-    const parsed = h.parse(replaced);
-    message.elements.push(...parsed);
-  }
-  if (data.mentions?.length)
-  {
-    message.elements.push(...data.mentions.map(mention => h.at(mention.id)));
+    if (data.mentions?.length)
+    {
+      let content = h.escape(data.content);
+      if (data.mentions.some(m => m.id === 'all'))
+        content = content.replace(/&lt;@all&gt;/g,
+          h('at', { type: 'all' }).toString());
+      const mentions = new Set(data.mentions.map(m => m.id));
+      content = content.replace(/&lt;@([0-9A-Z]{32})&gt;/g,
+        (raw, id) => mentions.has(id) ? h.at(id).toString() : raw);
+      message.elements.push(...h.parse(content));
+    }
+    else { message.elements.push(h.text(data.content)); }
   }
   for (const attachment of (data.attachments ?? []))
   {
