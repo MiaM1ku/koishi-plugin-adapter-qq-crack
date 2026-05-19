@@ -47,10 +47,18 @@ export function decodeGroupMessage(
   // 记录消息引用索引，后续 h.quote() 优先使用平台认可的 REFIDX。
   registerMessageReference(data.id, data.message_scene?.ext?.map(extractReferenceFromExt).find(Boolean));
   message.elements = [];
-  if (data.content.length) message.elements.push(h.text(data.content));
-  if (data.mention?.length)
+  if (data.content.length)
   {
-    message.elements.push(...data.mention.map(mention => h.at(mention.id)));
+    const content = data.content;
+    const escaped = h.escape(content);
+    const replaced = escaped
+      .replace(/&lt;@([0-9A-Z]{32})&gt;/g, (_, id) => h.at(id).toString());
+    const parsed = h.parse(replaced);
+    message.elements.push(...parsed);
+  }
+  if (data.mentions?.length)
+  {
+    message.elements.push(...data.mentions.map(mention => h.at(mention.id)));
   }
   for (const attachment of (data.attachments ?? []))
   {

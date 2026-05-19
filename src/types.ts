@@ -1353,7 +1353,7 @@ export interface UserMessage
 {
   id: string;
   author: GroupMember;
-  mention?: GroupMember[];
+  mentions?: GroupMember[];
   content: string;
   timestamp: string;
   group_id: string;
