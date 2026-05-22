@@ -1351,8 +1351,8 @@ export interface UserMessage
     union_openid?: string;
   };
   mentions?: (
-    | { scope: 'single'; } & this['author']
-    | { scope: 'all', username: '全体成员'; }
+    | { scope: 'single'; is_you?: boolean; } & this['author']
+    | { scope: 'all', is_you?: boolean; username?: '全体成员'; }
   )[];
   content: string;
   timestamp: string;

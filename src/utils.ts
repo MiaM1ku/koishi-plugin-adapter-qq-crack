@@ -52,13 +52,18 @@ export function decodeGroupMessage(
     if (data.mentions?.length)
     {
       let content = h.escape(data.content);
-      const mentions = new Set(data.mentions
-        .map(m => m.scope === 'single' ? m.id : 'all'));
+      const mentions = new Map(data.mentions
+        .map(m => [m.scope === 'single' ? m.id : 'all', m] as const));
       if (mentions.has('all'))
         content = content.replace(/&lt;@all&gt;/g,
           h('at', { type: 'all' }).toString());
-      content = content.replace(/&lt;@([0-9A-Z]{32})&gt;/g,
-        (raw, id) => mentions.has(id) ? h.at(id).toString() : raw);
+      content = content.replace(/&lt;@([0-9a-fA-F]{32})&gt;/g,
+        (raw, id) =>
+        {
+          const mention = mentions.get(id);
+          if (!mention) return raw;
+          return h.at(mention.scope === 'single' && mention.is_you ? bot.selfId : id).toString();
+        });
       message.elements.push(...h.parse(content));
 
       if (!bot.config.disableUserNamePersist)
@@ -112,13 +117,17 @@ export async function decodeMessage(
 ): Promise<Universal.Message>
 {
   message.id = message.messageId = data.id;
-  message.elements = [h.text(message.content)];
+  message.content = (data.content ?? '')
+    .replace(/<@!(\d+)>/g, (_, id) => h.at(id).toString());
   const { attachments = [] } = data;
   if (attachments.length && !/\s$/.test(message.content)) message.content += ' ';
-  message.elements.push(...attachments
+  message.content = attachments
     .filter(({ content_type }) => content_type.startsWith('image'))
-    .map((attachment) => h.image('https://' + attachment.url)));
-  message.content = message.elements.join('');
+    .reduce((content, attachment) => content + h.image('https://' + attachment.url), message.content);
+  message.elements = h.parse(message.content);
+  message.elements = h.transform(message.elements, {
+    text: (attrs) => h.unescape(attrs.content),
+  });
 
   if (data.message_reference)
   {
