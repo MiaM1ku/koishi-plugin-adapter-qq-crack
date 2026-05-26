@@ -39,6 +39,37 @@ function createSendError(error: { message?: string; response?: { data?: unknown;
   return new Error(code ? `QQ 消息发送失败 [${code}] ${message}` : `QQ 消息发送失败 ${message}`);
 }
 
+const markdownDataImagePattern = /!\[[^\]\n]*\]\((data:image\/[\w.+-]+;base64,[^)\s]+)\)/g;
+
+type MarkdownDataImagePart =
+  | { type: 'text'; content: string; }
+  | { type: 'image'; src: string; };
+
+function splitMarkdownDataImages(content: string)
+{
+  markdownDataImagePattern.lastIndex = 0;
+  const parts: MarkdownDataImagePart[] = [];
+  let lastIndex = 0;
+  let matched = false;
+  let capture: RegExpExecArray;
+  while (capture = markdownDataImagePattern.exec(content))
+  {
+    matched = true;
+    if (capture.index > lastIndex)
+    {
+      parts.push({ type: 'text', content: content.slice(lastIndex, capture.index) });
+    }
+    parts.push({ type: 'image', src: capture[1] });
+    lastIndex = markdownDataImagePattern.lastIndex;
+  }
+  if (!matched) return;
+  if (lastIndex < content.length)
+  {
+    parts.push({ type: 'text', content: content.slice(lastIndex) });
+  }
+  return parts;
+}
+
 export class QQGuildMessageEncoder<C extends Context = Context> extends MessageEncoder<C, QQGuildBot<C>>
 {
   private content: string = '';
@@ -116,17 +147,22 @@ export class QQGuildMessageEncoder<C extends Context = Context> extends MessageE
     {
       if (this.bot.http.isError(e))
       {
-        if (this.bot.parent.config.retryWhen.includes(e.response.data.code) && !this.retry && this.fileUrl)
+        const code = getErrorCode(e);
+        if (code !== undefined && this.bot.parent.config.retryWhen.includes(code) && !this.retry && this.fileUrl)
         {
           this.bot.logger.warn('retry image sending');
           this.retry = true;
           await this.resolveFile(null, true);
-          await this.flush();
+          return this.flush();
         }
         if (useFormData)
         {
           this.bot.logger.warn(`POST ${endpoint} response: %o, trace id: %s`, e.response.data, e.response.headers.get('x-tps-trace-id'));
         }
+        this.errors.push(createSendError(e));
+      } else
+      {
+        throw e;
       }
     }
 
@@ -325,9 +361,11 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
       if (!data.content.length) data.content = ' ';
       data.media = this.attachedFile;
       data.msg_type = QQ.Message.Type.MEDIA;
+      // QQ group/C2C rich media messages cannot be sent with event_id.
+      delete data.event_id;
     }
 
-    if (!this.customRequest && this.useMarkdown)
+    if (!this.customRequest && this.useMarkdown && !this.attachedFile)
     {
       data.msg_type = QQ.Message.Type.MARKDOWN;
       delete data.content;
@@ -481,7 +519,7 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
     {
       if (this.session.isDirect)
       {
-        res = await this.bot.internal.sendFilePrivate(this.options.session.userId, data);
+        res = await this.bot.internal.sendFilePrivate(fromPrivateChannelId(this.session.channelId), data);
       } else
       {
         res = await this.bot.internal.sendFileGuild(this.session.channelId, data);
@@ -500,6 +538,38 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
     }
     this.retry = false;
     return res;
+  }
+
+  private appendMarkdown(content: string)
+  {
+    if (!content) return;
+    this.plainTextOnly = false;
+    if (!this.useMarkdown)
+    {
+      this.content = escapeMarkdown(this.content);
+      this.useMarkdown = true;
+    }
+    this.content += content;
+  }
+
+  private async renderMarkdownDataImages(content: string)
+  {
+    const parts = splitMarkdownDataImages(content);
+    if (!parts) return false;
+    for (const part of parts)
+    {
+      if (part.type === 'text')
+      {
+        if (this.attachedFile) await this.flush();
+        this.appendMarkdown(part.content);
+      } else
+      {
+        await this.flush();
+        const data = await this.sendFile('image', { src: part.src });
+        if (data) this.attachedFile = data;
+      }
+    }
+    return true;
   }
 
   decodeButton(attrs: Dict, label: string)
@@ -582,13 +652,9 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
 
     if (type === 'markdown')
     {
-      this.plainTextOnly = false;
-      if (!this.useMarkdown)
-      {
-        this.content = escapeMarkdown(this.content);
-        this.useMarkdown = true;
-      }
-      this.content += extractMarkdownText(children);
+      const content = extractMarkdownText(children);
+      if (await this.renderMarkdownDataImages(content)) return;
+      this.appendMarkdown(content);
       return;
     }
 
@@ -615,6 +681,17 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
       await this.flush();
     } else if (customPayload)
     {
+      const content = customPayload.request.markdown?.content;
+      if (
+        customPayload.request.msg_type === QQ.Message.Type.MARKDOWN
+        && content
+        && !customPayload.request.keyboard
+        && !customPayload.request.stream
+        && await this.renderMarkdownDataImages(content)
+      )
+      {
+        return;
+      }
       await this.flush();
       this.customRequest = customPayload.request;
       this.customAutoStream = customPayload.autoStream;
