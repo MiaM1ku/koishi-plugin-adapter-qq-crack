@@ -62,7 +62,7 @@ export function decodeGroupMessage(
         {
           const mention = mentions.get(id);
           if (!mention) return raw;
-          return h.at(mention.scope === 'single' && mention.is_you ? bot.selfId : id).toString();
+          return h.at(mention.scope === 'single' && mention.is_you ? bot.selfId : id, { name: mention.username }).toString();
         });
       message.elements.push(...h.parse(content));
 
@@ -92,6 +92,19 @@ export function decodeGroupMessage(
     }
   }
   message.content = message.elements.join('');
+
+  if (data.msg_elements?.length)
+  {
+    const ref = data.msg_elements[0];
+    if (ref.content)
+    {
+      message.quote = {
+        id: ref.msg_idx,
+        elements: [h.text(ref.content)],
+        user: ref.author ? { id: ref.author.username, name: ref.author.username } : undefined,
+      };
+    }
+  }
 
   if (!payload) return message;
   let date = data.timestamp;

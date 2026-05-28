@@ -1340,6 +1340,17 @@ export namespace Forum
   }
 }
 
+export interface MsgElement
+{
+  author?: {
+    bot?: boolean;
+    username?: string;
+  };
+  content?: string;
+  message_type?: number;
+  msg_idx?: string;
+}
+
 export interface UserMessage
 {
   id: string;
@@ -1362,6 +1373,7 @@ export interface UserMessage
     ext?: string[];
     source?: string;
   };
+  msg_elements?: MsgElement[];
 }
 
 export enum ChatType
