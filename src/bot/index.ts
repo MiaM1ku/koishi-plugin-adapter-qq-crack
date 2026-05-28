@@ -14,6 +14,16 @@ interface GetAppAccessTokenResult
   expires_in: number;
 }
 
+type PendingAudit = {
+  resolve: (data: QQ.MessageAudited) => void;
+  reject: (reason: unknown) => void;
+};
+
+type CompletedAudit = {
+  data: QQ.MessageAudited;
+  rejected: boolean;
+};
+
 export class QQBot<C extends Context = Context, T extends QQBot.Config = QQBot.Config> extends Bot<C, T>
 {
   static MessageEncoder = QQMessageEncoder;
@@ -29,6 +39,8 @@ export class QQBot<C extends Context = Context, T extends QQBot.Config = QQBot.C
 
   private _token?: string;
   private _disposeTokenRefresh?: () => void;
+  private _pendingAudits = new Map<string, PendingAudit[]>();
+  private _completedAudits = new Map<string, CompletedAudit>();
 
   constructor(ctx: C, config: T)
   {
@@ -50,6 +62,14 @@ export class QQBot<C extends Context = Context, T extends QQBot.Config = QQBot.C
       parent: this,
     });
     this.internal = new GroupInternal(this, () => this.http);
+    this.ctx.on('qq/message-audit-pass', (data) =>
+    {
+      this.settleAudit(data, false);
+    });
+    this.ctx.on('qq/message-audit-reject', (data) =>
+    {
+      this.settleAudit(data, true);
+    });
     if (config.protocol === 'websocket')
     {
       this.ctx.plugin(WsClient, this as QQBot<C, QQBot.Config & WsClient.Options>);
@@ -69,11 +89,69 @@ export class QQBot<C extends Context = Context, T extends QQBot.Config = QQBot.C
   async stop()
   {
     this._disposeTokenRefresh?.();
+    this.rejectPendingAudits(new Error('QQ message audit wait cancelled because bot stopped.'));
     if (this.guildBot)
     {
       delete this.ctx.bots[this.guildBot.sid];
     }
     await super.stop();
+  }
+
+  waitForAudit(auditId: string): Promise<QQ.MessageAudited>
+  {
+    const completed = this._completedAudits.get(auditId);
+    if (completed)
+    {
+      this._completedAudits.delete(auditId);
+      return completed.rejected ? Promise.reject(completed.data) : Promise.resolve(completed.data);
+    }
+    return new Promise((resolve, reject) =>
+    {
+      const waiters = this._pendingAudits.get(auditId);
+      const waiter = { resolve, reject };
+      if (waiters)
+      {
+        waiters.push(waiter);
+      } else
+      {
+        this._pendingAudits.set(auditId, [waiter]);
+      }
+    });
+  }
+
+  private settleAudit(data: QQ.MessageAudited, rejected: boolean)
+  {
+    const waiters = this._pendingAudits.get(data.audit_id);
+    if (!waiters?.length)
+    {
+      this._completedAudits.set(data.audit_id, { data, rejected });
+      return;
+    }
+    this._pendingAudits.delete(data.audit_id);
+    for (const waiter of waiters)
+    {
+      if (rejected)
+      {
+        waiter.reject(data);
+      } else
+      {
+        waiter.resolve(data);
+      }
+    }
+  }
+
+  private rejectPendingAudits(reason: unknown)
+  {
+    const pendingAudits = [...this._pendingAudits.values()];
+    this._pendingAudits.clear();
+    this._completedAudits.clear();
+    for (const waiters of pendingAudits)
+    {
+      for (const waiter of waiters)
+      {
+        waiter.reject(reason);
+      }
+    }
   }
 
   async _ensureAccessToken()

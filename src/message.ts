@@ -70,6 +70,11 @@ function splitMarkdownDataImages(content: string)
   return parts;
 }
 
+function waitForAudit(bot: QQBot | QQGuildBot, audit_id: string)
+{
+  return ('parent' in bot && bot.parent ? bot.parent : bot).waitForAudit(audit_id);
+}
+
 export class QQGuildMessageEncoder<C extends Context = Context> extends MessageEncoder<C, QQGuildBot<C>>
 {
   private content: string = '';
@@ -207,27 +212,7 @@ export class QQGuildMessageEncoder<C extends Context = Context> extends MessageE
 
   async audit(audit_id: string): Promise<QQ.MessageAudited>
   {
-    return new Promise((resolve, reject) =>
-    {
-      const dispose = this.bot.ctx.on('qq/message-audit-pass', (data) =>
-      {
-        if (data.audit_id === audit_id)
-        {
-          dispose();
-          dispose2();
-          resolve(data);
-        }
-      });
-      const dispose2 = this.bot.ctx.on('qq/message-audit-reject', (data) =>
-      {
-        if (data.audit_id === audit_id)
-        {
-          dispose();
-          dispose2();
-          reject(data);
-        }
-      });
-    });
+    return waitForAudit(this.bot, audit_id);
   }
 
   async resolveFile(attrs: Dict, download = false)
@@ -466,27 +451,7 @@ export class QQMessageEncoder<C extends Context = Context> extends MessageEncode
 
   async audit(audit_id: string): Promise<QQ.MessageAudited>
   {
-    return new Promise((resolve, reject) =>
-    {
-      const dispose = this.bot.ctx.on('qq/message-audit-pass', (data) =>
-      {
-        if (data.audit_id === audit_id)
-        {
-          dispose();
-          dispose2();
-          resolve(data);
-        }
-      });
-      const dispose2 = this.bot.ctx.on('qq/message-audit-reject', (data) =>
-      {
-        if (data.audit_id === audit_id)
-        {
-          dispose();
-          dispose2();
-          reject(data);
-        }
-      });
-    });
+    return waitForAudit(this.bot, audit_id);
   }
 
   async sendFile(type: string, attrs: Dict)
