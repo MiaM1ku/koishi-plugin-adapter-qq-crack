@@ -72,7 +72,11 @@ function splitMarkdownDataImages(content: string)
 
 function waitForAudit(bot: QQBot | QQGuildBot, audit_id: string)
 {
-  return ('parent' in bot && bot.parent ? bot.parent : bot).waitForAudit(audit_id);
+  if (bot instanceof QQGuildBot)
+  {
+    return bot.parent.waitForAudit(audit_id);
+  }
+  return bot.waitForAudit(audit_id);
 }
 
 export class QQGuildMessageEncoder<C extends Context = Context> extends MessageEncoder<C, QQGuildBot<C>>

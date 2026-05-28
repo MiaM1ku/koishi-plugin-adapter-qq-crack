@@ -5,6 +5,7 @@ import { QQMessageEncoder } from '../message';
 import { GroupInternal } from '../internal';
 import { HttpServer } from '../http';
 import { decodeUser } from '../utils';
+import * as QQ from '../types';
 import * as AdapterConfig from '../config';
 import { fromPrivateChannelId, isPrivateChannelId, toPrivateChannelId } from '../channel';
 
